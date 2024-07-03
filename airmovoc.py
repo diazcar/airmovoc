@@ -155,10 +155,8 @@ if __name__ == "__main__":
         data_dir=args.input,
     )
 
-    xair_data = pd.DataFrame()
-
     for year in years:
-
+        xair_data = pd.DataFrame()
         indir = f"{args.input}/{year}"
 
         months = get_months(
@@ -210,7 +208,7 @@ if __name__ == "__main__":
 
             xair_data = pd.concat(
                 [xair_data, month_data],
-                axis=0
+                axis=1
                 )
 
             xair_data = filter_month(
