@@ -1,6 +1,9 @@
 # ---> Python
+
 #local files
 test_data
+notebook
+.vscode
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
