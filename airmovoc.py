@@ -38,11 +38,10 @@ def filter_month(
     start_date = dt.datetime(year, month, day)
     day_before_start_date = start_date - dt.timedelta(days=1)
 
-    last_day_of_month = calendar.monthrange(year, month)[1]
     end_date = dt.datetime(
         year,
-        month,
-        last_day_of_month
+        month+1,
+        1
         )
     data = data[day_before_start_date:end_date]
     return (data)
@@ -166,6 +165,7 @@ if __name__ == "__main__":
 
         for month in months:
             month_data = pd.DataFrame()
+            data = pd.DataFrame()
             for type_de_appareil in APPAREILS:
 
                 search_string = "".join([
@@ -179,8 +179,6 @@ if __name__ == "__main__":
                 if file_directories == []:
                     exit(f"No files in {indir}/{str(month).zfill(2)}/")
 
-                data = pd.DataFrame()
-
                 for file in file_directories:
 
                     asc_data = pd.read_table(file)
@@ -190,32 +188,34 @@ if __name__ == "__main__":
                     asc_data.set_index('Sampling date', inplace=True)
 
                     if "CAL60" in str(file):
-                        asc_data = asc_data.shift(periods=-1, freq='15min')
+                        asc_data = asc_data.shift(periods=-1, freq='30min')
 
-                    asc_data = asc_data[~asc_data.index.duplicated(keep='first')]
+                    # asc_data = asc_data[
+                    #     ~asc_data.index.duplicated(keep='first')
+                    #     ]
+                    data = pd.concat([data, asc_data])
 
-                    data = pd.concat([data, asc_data], axis=1)
-                    data.sort_index(inplace=True)
-                    data = fill_quarts(
-                        data=data,
-                        type_appareil=type_de_appareil
-                        )
-                    data = data[~data.index.duplicated(keep='first')]
+                data = fill_quarts(
+                    data=data,
+                    type_appareil=type_de_appareil
+                    )
+                data.sort_index(inplace=True)
+                data = data[~data.index.duplicated(keep='first')]
 
                 month_data = pd.concat(
                     [month_data, data],
                     axis=1
                     )
+                month_data = month_data[~data.index.duplicated(keep='first')]
                 month_data = month_data.sort_index()
 
-            xair_data = pd.concat(
-                [xair_data, month_data],
-                axis=1
-                )
-            xair_data = xair_data.sort_index()
-            xair_data = filter_month(
-                data=xair_data,
-                year=year,
-                month=2
-                )
-            xair_data.to_csv(f'./output/xair_{year}.csv')
+        xair_data = pd.concat(
+            [xair_data, month_data],
+            )
+        xair_data = xair_data.sort_index()
+        xair_data = filter_month(
+            data=xair_data,
+            year=year,
+            month=2
+            )
+        xair_data.to_csv(f'./output/xair_{year}.csv')
