@@ -98,10 +98,10 @@ APPAREILS = [
         'C6-C20',
     ]
 
-try:
-    FACTEURS = pd.read_csv("facteurs_de_conversions_C2-C20.csv")
-except FileNotFoundError:
-    print("facteurs_de_conversions_C2-C20.csv not found.")
+if os.path.isfile("./facteurs_de_conversions_C2-C20.csv"):
+    FACTEURS = pd.read_csv("./facteurs_de_conversions_C2-C20.csv")
+else:
+    exit("./facteurs_de_conversions_C2-C20.csv not found.")
 
 
 def apply_conversion(
@@ -121,7 +121,16 @@ def apply_conversion(
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        """_summary_
+        """
+        This script concatenate asc files from COV measurements equipment
+        (C2-C6 and C6-C20)
+
+        use as: python airmovoc.py -i ./path/to/in/folder -o ./path/to/out/folder
+
+        - Place chronological data as folder/years/months : ex. data/2022/01.
+        - The script will look up in path/folder the years and months and will create a csv file per year.
+
+        options:
         """,
         formatter_class=argparse.RawTextHelpFormatter,
     )
