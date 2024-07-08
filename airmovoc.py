@@ -99,7 +99,7 @@ APPAREILS = [
     ]
 
 try:
-    FACTEURS = pd.read_csv("facteurs_de_conversions_C2-C20_v2.csv")
+    FACTEURS = pd.read_csv("facteurs_de_conversions_C2-C20.csv")
 except FileNotFoundError:
     print("facteurs_de_conversions_C2-C20.csv not found.")
 
