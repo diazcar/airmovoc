@@ -2,8 +2,6 @@ import pandas as pd
 import os
 import pathlib
 import datetime as dt
-import calendar
-
 import argparse
 
 
@@ -100,7 +98,25 @@ APPAREILS = [
         'C6-C20',
     ]
 
-FACTEURS = pd.read_csv("conversion_factors.csv")
+try:
+    FACTEURS = pd.read_csv("facteurs_de_conversions_C2-C20_v2.csv")
+except FileNotFoundError:
+    print("facteurs_de_conversions_C2-C20.csv not found.")
+
+
+def apply_conversion(
+        data: pd.DataFrame,
+) -> pd.DataFrame:
+    cols = data.drop(['Volume'], axis=1).columns
+    for head in cols:
+        poll = FACTEURS[FACTEURS['Composé'] == head]
+        x_facteur = float(poll["Facteur de conversion"].values[0])
+        data[head] = data[head].apply(
+            lambda x:
+                x*x_facteur
+            )
+    return (data)
+
 
 if __name__ == "__main__":
 
@@ -187,12 +203,18 @@ if __name__ == "__main__":
                         ).dt.round('15min')
                     asc_data.set_index('Sampling date', inplace=True)
 
+                    asc_data = asc_data.drop(
+                        list(asc_data.filter(regex='Unnamed').columns),
+                        axis=1,
+                        )
+
+                    asc_data = apply_conversion(
+                        data=asc_data
+                        )
+
                     if "CAL60" in str(file):
                         asc_data = asc_data.shift(periods=-1, freq='30min')
 
-                    # asc_data = asc_data[
-                    #     ~asc_data.index.duplicated(keep='first')
-                    #     ]
                     data = pd.concat([data, asc_data])
 
                 data = fill_quarts(
