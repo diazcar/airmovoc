@@ -2,6 +2,7 @@
 
 #local files
 .vscode
+data
 local
 notebook
 output

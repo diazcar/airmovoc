@@ -33,15 +33,14 @@ def filter_month(
         month: int,
         day: int = 1,
 ):
+
     start_date = dt.datetime(year, month, day)
     day_before_start_date = start_date - dt.timedelta(days=1)
 
-    end_date = dt.datetime(
-        year,
-        month+1,
-        1
-        )
-    data = data[day_before_start_date:end_date]
+    if month != 12:
+        month = month + 1
+
+    data = data[data.index > day_before_start_date]
     return (data)
 
 
@@ -155,7 +154,7 @@ if __name__ == "__main__":
         "-i", "--input",
         type=str,
         help="Path to the data to process",
-        default="./test_data",
+        default="./data",
         metavar="\b",
     )
 
@@ -163,7 +162,7 @@ if __name__ == "__main__":
         "-o", "--output",
         type=str,
         help="Output directory for concatenated files",
-        default="./output",
+        default="./",
         metavar="\b",
     )
 
@@ -188,8 +187,8 @@ if __name__ == "__main__":
             month=args.month
             )
 
+        xair_data = pd.DataFrame()
         for month in months:
-            month_data = pd.DataFrame()
             data = pd.DataFrame()
             for type_de_appareil in APPAREILS:
 
@@ -206,7 +205,7 @@ if __name__ == "__main__":
 
                 for file in file_directories:
 
-                    asc_data = pd.read_table(file)
+                    asc_data = pd.read_table(file, on_bad_lines='skip')
                     asc_data['Sampling date'] = pd.to_datetime(
                         asc_data['Sampling date']
                         ).dt.round('15min')
@@ -225,28 +224,21 @@ if __name__ == "__main__":
                         asc_data = asc_data.shift(periods=-1, freq='30min')
 
                     data = pd.concat([data, asc_data])
+                    data = filter_month(
+                        data=data,
+                        year=year,
+                        month=month
+                        )
+
+                data.sort_index(inplace=True)
+
+                data = data[~data.index.duplicated(keep='first')]
 
                 data = fill_quarts(
                     data=data,
                     type_appareil=type_de_appareil
                     )
-                data.sort_index(inplace=True)
-                data = data[~data.index.duplicated(keep='first')]
 
-                month_data = pd.concat(
-                    [month_data, data],
-                    axis=1
-                    )
-                month_data = month_data[~data.index.duplicated(keep='first')]
-                month_data = month_data.sort_index()
+            xair_data = pd.concat([xair_data, data], axis=0)
 
-        xair_data = pd.concat(
-            [xair_data, month_data],
-            )
-        xair_data = xair_data.sort_index()
-        xair_data = filter_month(
-            data=xair_data,
-            year=year,
-            month=2
-            )
-        xair_data.to_csv(f'./output/xair_{year}.csv')
+        xair_data.to_csv(f'{args.output}/xair_{year}.csv')
