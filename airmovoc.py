@@ -22,7 +22,7 @@ def fill_quarts(
         for i in range(2):
 
             shift_data = shift_data.shift(freq='15min')
-            data = pd.concat([data, shift_data], axis=0)
+            data = pd.concat([data, shift_data], axis=0,)
 
     return (data.sort_index())
 
@@ -69,7 +69,8 @@ def test_directories(
 def get_years(
         year: str,
         data_dir: str,
-):
+        ):
+
     if year is None:
         years = [int(x) for x in os.listdir(data_dir)]
         if years is []:
@@ -105,10 +106,11 @@ else:
 
 def apply_conversion(
         data: pd.DataFrame,
+        file: str,
 ) -> pd.DataFrame:
     cols = data.drop(['Volume'], axis=1).columns
     for head in cols:
-        poll = FACTEURS[FACTEURS['Composé'] == head]
+        poll = FACTEURS[FACTEURS['Composé'] == head.split(".")[0]]
         x_facteur = float(poll["Facteur de conversion"].values[0])
         data[head] = data[head].apply(
             lambda x:
@@ -187,9 +189,8 @@ if __name__ == "__main__":
             month=args.month
             )
 
-        xair_data = pd.DataFrame()
         for month in months:
-            data = pd.DataFrame()
+            month_data = pd.DataFrame()
             for type_de_appareil in APPAREILS:
 
                 search_string = "".join([
@@ -203,25 +204,36 @@ if __name__ == "__main__":
                 if file_directories == []:
                     exit(f"No files in {indir}/{str(month).zfill(2)}/")
 
+                data = pd.DataFrame()
                 for file in file_directories:
 
-                    asc_data = pd.read_table(file, on_bad_lines='skip')
+                    asc_data = pd.read_table(file)
                     asc_data['Sampling date'] = pd.to_datetime(
-                        asc_data['Sampling date']
+                        asc_data['Sampling date'],
+                        format='mixed',
+                        dayfirst=True,
                         ).dt.round('15min')
-                    asc_data.set_index('Sampling date', inplace=True)
 
+                    asc_data.set_index('Sampling date', inplace=True)
+                    asc_data.sort_index(inplace=True)
                     asc_data = asc_data.drop(
                         list(asc_data.filter(regex='Unnamed').columns),
                         axis=1,
                         )
 
                     asc_data = apply_conversion(
-                        data=asc_data
+                        data=asc_data,
+                        file=file,
                         )
 
                     if "CAL60" in str(file):
                         asc_data = asc_data.shift(periods=-1, freq='30min')
+
+                    # asc_data = asc_data[~asc_data.index.duplicated(keep='first')]
+                    asc_data = fill_quarts(
+                        data=asc_data,
+                        type_appareil=type_de_appareil
+                        )
 
                     data = pd.concat([data, asc_data])
                     data = filter_month(
@@ -229,16 +241,13 @@ if __name__ == "__main__":
                         year=year,
                         month=month
                         )
+                    data = data[~data.index.duplicated(keep='first')]
+                    data.sort_index(inplace=True)
+                month_data = pd.concat([month_data, data], axis=1)
+                month_data.sort_index(inplace=True)
 
-                data.sort_index(inplace=True)
+            out_path = f'{args.output}/concat_out/{year}/'
+            if os.path.exists(out_path) is False:
+                os.makedirs(out_path)
 
-                data = data[~data.index.duplicated(keep='first')]
-
-                data = fill_quarts(
-                    data=data,
-                    type_appareil=type_de_appareil
-                    )
-
-            xair_data = pd.concat([xair_data, data], axis=0)
-
-        xair_data.to_csv(f'{args.output}/xair_{year}.csv')
+            month_data.to_csv(f'{out_path}/xair_{year}_{str(month).zfill(2)}.csv')
